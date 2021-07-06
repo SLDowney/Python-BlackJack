@@ -161,7 +161,7 @@ def blackjack_game(deck):
 				player_score -= 10
 
 		# Print player cards and score		
-		print("PLAYER CARDS: ", player_cards)
+		print("PLAYER CARDS: ", player_card)
 		#print_cards(player_cards, False)
 		print("PLAYER SCORE = ", player_score)
 
@@ -176,7 +176,7 @@ def blackjack_game(deck):
 		dealer_score += dealer_card.card_value
 
 		# Print dealer cards and score, keeping in mind to hide the second card and score
-		print("DEALER CARDS: ", dealer_cards)
+		print("DEALER CARDS: ", dealer_card)
 		if len(dealer_cards) == 1:
 			#print_cards(dealer_cards, False)
 			print("DEALER SCORE = ", dealer_score)
