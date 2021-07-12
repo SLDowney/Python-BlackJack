@@ -13,7 +13,7 @@ def getPlayerBet(playerMoney):
                 with open("money.txt", "w") as file:
                     file.write(str(playerMoney) + "\n")
                 print()
-                return playerMoney
+                return betAmount
             elif betAmount < 5 or betAmount > 1000 or betAmount > playerMoney[0]:
                 print("Invalid bet amount. Bets must be between 5 and 1000, and can't be less than your current balance, $" + str(playerMoney[0]) + ".\n")
                 continue
@@ -81,7 +81,7 @@ def playerTurnHit(cards, playerCards):
 def playerTurnStand(cards, dealerCards, dCard1, dCard2, playerCards, playerMoney, betAmount):
     dealerTurnHit(cards, dealerCards, dCard1, dCard2, playerCards, playerMoney, betAmount)
 
-def playerPoints(playerCards):
+def playerPoints(playerCards, dealerCards, playerMoney):
     totalPlayerPoints = 0
     for card in playerCards:
         values = card[2]
@@ -94,6 +94,8 @@ def playerPoints(playerCards):
                         if card[0] == "Ace":
                             card[2] == 1
                             playerPoints(playerCards)
+                        else:
+                            checkWinner(playerCards, dealerCards, playerMoney)
     return totalPlayerPoints
     
 def dealerPoints(dealerCards):
@@ -101,15 +103,15 @@ def dealerPoints(dealerCards):
     for card in dealerCards:
         values = int(card[2])
         totalDealerPoints += values
-        if totalDealerPoints == 21:
-            print("DEALER POINTS: ", totalDealerPoints, "\nBLACKJACK !!!")
-            exit()
-        elif totalDealerPoints > 21:
-                    for card in dealerCards:
-                        if card[0] == "Ace":
-                            card[2] == 1
-                            dealerPoints(dealerCards)
-        return totalDealerPoints
+        # if totalDealerPoints == 21:
+        #     print("DEALER POINTS: ", totalDealerPoints, "\nBLACKJACK !!!")
+        #     exit()
+        # elif totalDealerPoints > 21:
+        #             for card in dealerCards:
+        #                 if card[0] == "Ace":
+        #                     card[2] == 1
+        #                     dealerPoints(dealerCards)
+    return totalDealerPoints
 
 def dealerTurnHit(cards, dealerCards, dCard1, dCard2, playerCards, playerMoney, betAmount):
     print("DEALER's CARDS: ")
@@ -159,7 +161,7 @@ def checkWinner(playerCards, dealerCards, playerMoney, betAmount):
         elif totalDealerPoints < 21:
             if totalPlayerPoints > totalDealerPoints:
                 print("PLAYER WINS WITH ", totalPlayerPoints, " POINTS!")
-                playerMoney = playerMoney * 1.5
+                playerMoney = float(playerMoney) * 1.5
                 db.writePlayerMoney(playerMoney)
                 exit()
             elif totalPlayerPoints == totalDealerPoints:
@@ -191,16 +193,17 @@ def main():
     dCard2 = getDealerCards(cards, dealerCards)
 
     DealCards(pCard1, pCard2, dCard1, playerCards)
-    totalPlayerPoints = playerPoints(playerCards)
-    while totalPlayerPoints < 21 and totalPlayerPoints <21:
+    totalPlayerPoints = playerPoints(playerCards, dealerCards, playerMoney)
+    totalDealerPoints = dealerPoints(dealerCards)
+    while totalPlayerPoints < 21 and totalDealerPoints <21:
         playerChoice = input("\nHit or Stand? >> ")
         if playerChoice.lower() == "hit":
-            playerPoints(playerCards)
-            dealerPoints(dealerCards)
             playerTurnHit(cards, playerCards)
+            playerPoints(playerCards, dealerCards, playerMoney)
+            #dealerPoints(dealerCards)
             #checkWinner(playerCards, dealerCards)
         elif playerChoice.lower() == "stand":
-            playerTurnStand(cards, dealerCards, dCard1, dCard2, playerCards, playerMoney, betAmount)
+            #playerTurnStand(cards, dealerCards, dCard1, dCard2, playerCards, playerMoney, betAmount)
             dealerTurnHit(cards, playerCards, dealerCards, dCard1, dCard2, playerMoney, betAmount)
             checkWinner(playerCards, dealerCards, playerMoney, betAmount)
         else:
