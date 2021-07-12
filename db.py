@@ -5,7 +5,7 @@ def startingPlayerMoney():
             file.write(str(playerMoney))
         return playerMoney
     except FileNotFoundError:
-        print("Error in starting Player Money function! Line 10")
+        print("Error in starting Player Money function!")
 
 def writePlayerMoney(playerMoney):
     try:
@@ -13,4 +13,4 @@ def writePlayerMoney(playerMoney):
             file.write(str(playerMoney) + "\n")
         return playerMoney
     except FileNotFoundError:
-        print("Error in Write Player Money Function! Line 18")
+        print("Error writing file.")
