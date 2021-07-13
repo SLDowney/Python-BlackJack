@@ -10,8 +10,7 @@ def getPlayerBet(playerMoney):
             betAmount = float(input("Bet Amount: "))
             if (betAmount >= 5 and betAmount <= 1000) and betAmount <= playerMoney[0]:
                 playerMoney = playerMoney[0] - betAmount
-                with open("money.txt", "w") as file:
-                    file.write(str(playerMoney) + "\n")
+                db.writePlayerMoney(playerMoney)
                 print()
                 return betAmount
             elif betAmount < 5 or betAmount > 1000 or betAmount > playerMoney[0]:
@@ -23,10 +22,20 @@ def getPlayerBet(playerMoney):
 
 def playerWins(playerMoney, betAmount):
     winnings = betAmount * 1.5
-    playerMoney = playerMoney + winnings
+    playerMoney = playerMoney[0] + winnings
     db.writePlayerMoney(playerMoney)
+    print("MONEY :", playerMoney)
     return playerMoney
 
+def playerLoss(playerMoney, betAmount):
+    playerMoney = playerMoney[0] - betAmount
+    db.writePlayerMoney(playerMoney)
+    print("MONEY: ", playerMoney)
+    if playerMoney < 5:
+        buyMore = input("Balance less than minimum bet, would you like to top up to $100?")
+        if buyMore.lower() == "y":
+            playerMoney[0] = 100
+    
 def cardDeck():
     suits = ["Spades", "Clubs", "Hearts", "Diamonds"]
     faces = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "Jack", "Queen", "King", "Ace"]
@@ -46,7 +55,7 @@ def cardDeck():
 
 def shuffleDeck(cards):
     random.shuffle(cards)
-    print("DECK SUCCESSFULLY SHUFFLED !! Line 51")
+    print("Shuffling deck...\n")
 
 def getPlayerCards(cards, playerCards):
     playerCard = random.choice(cards)
@@ -60,42 +69,51 @@ def getDealerCards(cards, dealerCards):
     cards.remove(dealerCard)
     return dealerCard
 
-def DealCards(pCard1, pCard2, dCard1, playerCards):
+def playerHand(playerCards):
+    for card in playerCards:
+        suit = card[0]
+        face = card[1]
+        print(str(face) + " of " + str(suit))
+
+def dealerHand(dealerCards):
+    for card in dealerCards:
+        suit = card[0]
+        face = card[1]
+        print(str(face) + " of " + str(suit))
+
+def DealCards(dCard1, playerCards, dealerCards, playerMoney, betAmount, cards):
 
     print("DEALER'S SHOW CARD: ")
     print(dCard1[1], " of ", dCard1[0])
     print("DEALER POINTS: ", dCard1[2])
     
     print("\nYOUR CARDS: ")
-    print(pCard1[1], " of ", pCard1[0])
-    print(pCard2[1], " of ", pCard2[0])
-    print("PLAYER POINTS: ", playerPoints(playerCards))
+    playerHand(playerCards)
+    print("PLAYER POINTS: ", playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1))
 
-def playerTurnHit(cards, playerCards):
+def playerTurnHit(cards, playerCards, dealerCards, playerMoney, betAmount, dCard1):
     pHitCard = getPlayerCards(cards, playerCards)
-    for card in playerCards:
-        print(card[1], " of ", card[0])
-    print("PLAYER POINTS: ", playerPoints(playerCards))
+    playerHand(playerCards)
+    print("PLAYER POINTS: ", playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1))
     return pHitCard
 
-def playerTurnStand(cards, dealerCards, dCard1, dCard2, playerCards, playerMoney, betAmount):
-    dealerTurnHit(cards, dealerCards, dCard1, dCard2, playerCards, playerMoney, betAmount)
+def playerTurnStand(cards, dealerCards, dCard1, dCard2, playerCards, playerMoney, betAmount, totalPlayerPoints):
+    dealerTurnHit(cards, dealerCards, playerCards, playerMoney, betAmount, totalPlayerPoints)
 
-def playerPoints(playerCards, dealerCards, playerMoney):
+def playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1):
     totalPlayerPoints = 0
     for card in playerCards:
         values = card[2]
         totalPlayerPoints = totalPlayerPoints + values
         if totalPlayerPoints == 21:
-            print("PLAYER POINTS: ", totalPlayerPoints, "\nBLACKJACK !!!")
-            exit()
+            checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPlayerPoints, dCard1)
         elif totalPlayerPoints > 21:
                     for card in playerCards:
                         if card[0] == "Ace":
                             card[2] == 1
-                            playerPoints(playerCards)
+                            playerPoints(playerCards, cards, dCard1)
                         else:
-                            checkWinner(playerCards, dealerCards, playerMoney)
+                            checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPlayerPoints, dCard1)
     return totalPlayerPoints
     
 def dealerPoints(dealerCards):
@@ -113,11 +131,10 @@ def dealerPoints(dealerCards):
         #                     dealerPoints(dealerCards)
     return totalDealerPoints
 
-def dealerTurnHit(cards, dealerCards, dCard1, dCard2, playerCards, playerMoney, betAmount):
-    print("DEALER's CARDS: ")
-    print(dCard1[1], " of ", dCard1[0])
-    print(dCard2[1], " of ", dCard2[0])
-    print("DEALER POINTS: ", dealerPoints(dealerCards))
+def dealerTurnHit(cards, dealerCards, playerCards, playerMoney, betAmount, totalPlayerPoints, dCard1):
+    print("\nDEALER's CARDS: ")
+    dealerHand(dealerCards)
+    print("DEALER POINTS: ", dealerPoints(dealerCards), "\n")
 
     while dealerPoints(dealerCards) < 17:
         print("\nDealer hits...\n")
@@ -125,52 +142,48 @@ def dealerTurnHit(cards, dealerCards, dCard1, dCard2, playerCards, playerMoney, 
         print(dCard3[1], " of ", dCard3[0])
         print("\nDEALER POINTS: ", dealerPoints(dealerCards))
     
-    checkWinner(playerCards, dealerCards, playerMoney, betAmount)
+    checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPlayerPoints, dCard1)
 
-def checkWinner(playerCards, dealerCards, playerMoney, betAmount):
+def checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPlayerPoints, dCard1):
 
-    totalPlayerPoints = playerPoints(playerCards)
+    # playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards)
     totalDealerPoints = dealerPoints(dealerCards)
-
+    #while True:
     if totalPlayerPoints > 21:
         for card in playerCards:
-            values = card[2]
-            if values == 11:
-                values = 1
+            #values = card[2]
+            if card[2] == 11:
+                card[2] = 1
                 totalPlayerPoints -= 10
-            break
-        print("BUST!! HA HA SUCKS TO BE YOU")
-        exit()
+        print("PLAYER BUST!! HA HA SUCKS TO BE YOU")
+        playerLoss(playerMoney, betAmount)
+        return False
     elif totalPlayerPoints == 21:
         print("\nBLACKJACK !!! You must have cheated, you're not THAT good...")
         playerWins(playerMoney, betAmount)
-        exit()
+        return False
     elif totalPlayerPoints < 21:
         if totalDealerPoints > 21:
-                print(totalDealerPoints, " BUST!! DEALER LOSES, VICTORY!")
-                print("MONEY: ", playerMoney)
-                winnings = playerMoney * 1.5
-                db.writePlayerMoney(playerMoney)
-                exit()
+                print("BUST!! DEALER LOSES, VICTORY!")
+                playerWins(playerMoney, betAmount)
+                return False
         elif totalDealerPoints == 21:
-            print("\nDEALER CARDS: ")
-            print(dealerCards[0], dealerCards[1])
-            print(totalDealerPoints, "\nBLACKJACK !!! DEALER WINS!")
-            db.writePlayerMoney(playerMoney)
-            exit()
+            print("\nBLACKJACK !!! DEALER WINS!")
+            playerLoss(playerMoney, betAmount)
+            return False
         elif totalDealerPoints < 21:
             if totalPlayerPoints > totalDealerPoints:
-                print("PLAYER WINS WITH ", totalPlayerPoints, " POINTS!")
-                playerMoney = float(playerMoney) * 1.5
-                db.writePlayerMoney(playerMoney)
-                exit()
+                print("PLAYER WINS!!")
+                playerWins(playerMoney, betAmount)
+                return False
             elif totalPlayerPoints == totalDealerPoints:
                 print("IT'S A DRAW!")
+                return False
             else:
                 print("YOU LOSE SUCKER !")
-                print("MONEY: ", playerMoney)
-                db.writePlayerMoney(playerMoney)
-                exit()
+                playerLoss(playerMoney, betAmount)
+                return False
+
     #Round payout to max 2 decimal places
 
 def main():
@@ -181,33 +194,41 @@ def main():
     print("BLACKJACK!")
     print("Blackjack payout os 3:2\n")
     
-    cards = cardDeck()
-    playerCards = []
-    dealerCards = []
+    keepGoing = "y"
+    while keepGoing.lower() == "y":
+        betAmount = getPlayerBet(playerMoney)
+        
+        cards = cardDeck()
+        
+        shuffleDeck(cards)
+        
+        playerCards = []
+        dealerCards = []
+        
+        pCard1 = getPlayerCards(cards, playerCards)
+        pCard2 = getPlayerCards(cards, playerCards)
+        dCard1 = getDealerCards(cards, dealerCards)
+        dCard2 = getDealerCards(cards, dealerCards)
 
-    betAmount = getPlayerBet(playerMoney)
+        DealCards(dCard1, playerCards, dealerCards,playerMoney, betAmount, cards)
+
+        totalPlayerPoints = playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
+        totalDealerPoints = dealerPoints(dealerCards)
+
+        
+        if totalPlayerPoints < 21 and totalDealerPoints < 21:
+            playerChoice = input("\nHit or Stand? >> ")
+            if playerChoice.lower() == "hit":
+                playerTurnHit(cards, playerCards, dealerCards, playerMoney, betAmount, dCard1)
+            elif playerChoice.lower() == "stand":
+                dealerTurnHit(cards, dealerCards, playerCards, playerMoney, betAmount, totalPlayerPoints, dCard1)
+                checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPlayerPoints, dCard1)
+            else:
+                print("Please enter a valid command.")
     
-    pCard1 = getPlayerCards(cards, playerCards)
-    pCard2 = getPlayerCards(cards, playerCards)
-    dCard1 = getDealerCards(cards, dealerCards)
-    dCard2 = getDealerCards(cards, dealerCards)
-
-    DealCards(pCard1, pCard2, dCard1, playerCards)
-    totalPlayerPoints = playerPoints(playerCards, dealerCards, playerMoney)
-    totalDealerPoints = dealerPoints(dealerCards)
-    while totalPlayerPoints < 21 and totalDealerPoints <21:
-        playerChoice = input("\nHit or Stand? >> ")
-        if playerChoice.lower() == "hit":
-            playerTurnHit(cards, playerCards)
-            playerPoints(playerCards, dealerCards, playerMoney)
-            #dealerPoints(dealerCards)
-            #checkWinner(playerCards, dealerCards)
-        elif playerChoice.lower() == "stand":
-            #playerTurnStand(cards, dealerCards, dCard1, dCard2, playerCards, playerMoney, betAmount)
-            dealerTurnHit(cards, playerCards, dealerCards, dCard1, dCard2, playerMoney, betAmount)
-            checkWinner(playerCards, dealerCards, playerMoney, betAmount)
-        else:
-            print("Please enter a valid command.")
+    keepGoing = input("\nPlay Again? (y/n): ")
+    
+    print("\nThanks for playing!")
 
 if __name__ == "__main__":
     main()
