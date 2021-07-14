@@ -2,15 +2,15 @@ import random
 import db as db
 
 def getPlayerBet(playerMoney):
-    db.readPlayerMoney()
+    maxBet = db.readPlayerMoney()
     playerMoney = float(playerMoney)
-    print("Money: ", db.readPlayerMoney())
+    print("\nMoney: ", maxBet)
     print()
     
     while True:
         try:
             betAmount = float(input("Bet Amount: "))
-            if (betAmount >= 5 and betAmount <= 1000) and betAmount <= float(db.readPlayerMoney()):
+            if (betAmount >= 5 and betAmount <= 1000) and betAmount <= float(maxBet):
                 playerMoney = playerMoney - betAmount
                 db.writePlayerMoney(playerMoney)
                 print()
@@ -25,15 +25,15 @@ def getPlayerBet(playerMoney):
 
 def playerWins(playerMoney, betAmount):
     winnings = betAmount * 1.5
-    playerMoney = playerMoney + winnings
+    playerMoney = float(playerMoney) + winnings
     db.writePlayerMoney(playerMoney)
-    print("MONEY :", db.readPlayerMoney())
+    print("\nMONEY :", db.readPlayerMoney())
     return playerMoney
 
 def playerLoss(playerMoney, betAmount):
-    playerMoney = playerMoney - betAmount
+    playerMoney = float(playerMoney)
     db.writePlayerMoney(playerMoney)
-    print("MONEY: ", db.readPlayerMoney())
+    print("\nMONEY: ", db.readPlayerMoney())
     if playerMoney < 5:
         buyMore = input("Balance less than minimum bet, would you like to top up to $100? (y/n): ")
         if buyMore.lower() == "y":
@@ -61,10 +61,12 @@ def shuffleDeck(cards):
     random.shuffle(cards)
     print("Shuffling deck...\n")
 
-def getPlayerCards(cards, playerCards):
+def getPlayerCards(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1):
     playerCard = random.choice(cards)
     playerCards.append(playerCard)
     cards.remove(playerCard)
+    if playerCard[1] == "Ace":
+        playerCheckForAce(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
     return playerCard
 
 def getDealerCards(cards, dealerCards):
@@ -92,11 +94,13 @@ def DealCards(dCard1, playerCards, dealerCards, playerMoney, betAmount, cards):
     print("DEALER POINTS: ", dCard1[2])
     
     print("\nYOUR CARDS: ")
+    pCard1 = getPlayerCards(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
+    pCard2 = getPlayerCards(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
     playerHand(playerCards)
     print("PLAYER POINTS: ", playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1))
 
 def playerTurnHit(cards, playerCards, dealerCards, playerMoney, betAmount, dCard1):
-    pHitCard = getPlayerCards(cards, playerCards)
+    pHitCard = getPlayerCards(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
     playerHand(playerCards)
     print("PLAYER POINTS: ", playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1))
     return pHitCard
@@ -104,54 +108,70 @@ def playerTurnHit(cards, playerCards, dealerCards, playerMoney, betAmount, dCard
 def playerTurnStand(cards, dealerCards, dCard1, dCard2, playerCards, playerMoney, betAmount, totalPlayerPoints):
     dealerTurnHit(cards, dealerCards, playerCards, playerMoney, betAmount, totalPlayerPoints)
 
+def playerCheckForAce(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1):
+    totalPlayerPoints = playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
+    if totalPlayerPoints > 21:
+        for card in playerCards:
+            if card[1] == "Ace":
+                card[2] == 1
+                playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
+            else:
+                playerLoss(playerMoney, betAmount)
+
+def dealerCheckForAce(dealerCards, playerCards, playerMoney, betAmount, cards, dCard1):
+    for card in dealerCards:
+        if card[1] == "Ace":
+            card[2] == 1
+            dealerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
+
+def getPlayerPoints():
+    pass
+
 def playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1):
     totalPlayerPoints = 0
     for card in playerCards:
         values = card[2]
         totalPlayerPoints = totalPlayerPoints + values
+    
+    while totalPlayerPoints == 21 or totalPlayerPoints > 21:
         if totalPlayerPoints == 21:
             playerWins(playerMoney, betAmount)
         elif totalPlayerPoints > 21:
-                    for card in playerCards:
-                        if card[0] == "Ace":
-                            card[2] == 1
-                            playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
-                        else:
-                            playerLoss(playerMoney, betAmount)
+            checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPlayerPoints, dCard1)
+            return totalPlayerPoints
     return totalPlayerPoints
     
-def dealerPoints(dealerCards, playerMoney, betAmount):
+def dealerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1):
     totalDealerPoints = 0
     for card in dealerCards:
         values = int(card[2])
         totalDealerPoints += values
+    
+    while totalDealerPoints == 21 or totalDealerPoints > 21:
         if totalDealerPoints == 21:
             playerLoss(playerMoney, betAmount)
             exit()
         elif totalDealerPoints > 21:
-                    for card in dealerCards:
-                        if card[0] == "Ace":
-                            card[2] == 1
-                            dealerPoints(dealerCards, playerMoney, betAmount)
+            dealerCheckForAce(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
+            break
     return totalDealerPoints
 
 def dealerTurnHit(cards, dealerCards, playerCards, playerMoney, betAmount, totalPlayerPoints, dCard1):
     print("\nDEALER's CARDS: ")
     dealerHand(dealerCards)
-    print("DEALER POINTS: ", dealerPoints(dealerCards, playerMoney, betAmount), "\n")
+    print("DEALER POINTS: ", dealerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1), "\n")
 
-    while dealerPoints(dealerCards, playerMoney, betAmount) < 17:
+    while dealerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1) < 17:
         print("\nDealer hits...\n")
         dCard3 = getDealerCards(cards, dealerCards)
         print(dCard3[1], " of ", dCard3[0])
-        print("\nDEALER POINTS: ", dealerPoints(dealerCards, playerMoney, betAmount))
+        print("\nDEALER POINTS: ", dealerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1))
     
     checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPlayerPoints, dCard1)
 
 def checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPlayerPoints, dCard1):
 
-    totalPlayerPoints = playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
-    totalDealerPoints = dealerPoints(dealerCards, playerMoney, betAmount)
+    totalDealerPoints = dealerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
     #while True:
     if totalPlayerPoints > 21:
         for card in playerCards:
@@ -159,7 +179,8 @@ def checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPl
             if card[2] == 11:
                 card[2] = 1
                 totalPlayerPoints -= 10
-        print("PLAYER BUST!! HA HA SUCKS TO BE YOU")
+        print("PLAYER POINTS: ", totalPlayerPoints)
+        print("\nPLAYER BUST!! HA HA SUCKS TO BE YOU")
         playerLoss(playerMoney, betAmount)
         return False
     elif totalPlayerPoints == 21:
@@ -168,23 +189,23 @@ def checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPl
         return False
     elif totalPlayerPoints < 21:
         if totalDealerPoints > 21:
-                print("BUST!! DEALER LOSES, VICTORY!")
+                print("\nDEALER LOSES, VICTORY!")
                 playerWins(playerMoney, betAmount)
                 return False
         elif totalDealerPoints == 21:
-            print("\nBLACKJACK !!! DEALER WINS!")
+            print("\nDEALER BLACKJACK!! DEALER WINS!")
             playerLoss(playerMoney, betAmount)
             return False
         elif totalDealerPoints < 21:
             if totalPlayerPoints > totalDealerPoints:
-                print("PLAYER WINS!!")
+                print("\nPLAYER WINS!!")
                 playerWins(playerMoney, betAmount)
                 return False
             elif totalPlayerPoints == totalDealerPoints:
-                print("IT'S A DRAW!")
+                print("\nIT'S A DRAW!")
                 return False
             else:
-                print("YOU LOSE SUCKER !")
+                print("\nYOU LOSE SUCKER !")
                 playerLoss(playerMoney, betAmount)
                 return False
 
@@ -209,8 +230,8 @@ def main():
     
     keepGoing = "y"
     while keepGoing.lower() == "y":
-        db.writePlayerMoney(playerMoney)
         betAmount = getPlayerBet(playerMoney)
+        playerMoney = db.readPlayerMoney()
         
         cards = cardDeck()
         
@@ -218,21 +239,24 @@ def main():
         
         playerCards = []
         dealerCards = []
+        pCard1 = 0
+        pCard2 = 0
+        dCard1 = 0
+        dCard2 = 0
         
-        pCard1 = getPlayerCards(cards, playerCards)
-        pCard2 = getPlayerCards(cards, playerCards)
         dCard1 = getDealerCards(cards, dealerCards)
         dCard2 = getDealerCards(cards, dealerCards)
 
         DealCards(dCard1, playerCards, dealerCards,playerMoney, betAmount, cards)
 
         totalPlayerPoints = playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
-        totalDealerPoints = dealerPoints(dealerCards, playerMoney, betAmount)
+        totalDealerPoints = dealerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
 
         
-        if totalPlayerPoints < 21 and totalDealerPoints < 21:
+        while totalPlayerPoints < 21 and totalDealerPoints < 21:
             hitStand(cards, dealerCards, playerCards, playerMoney, betAmount, totalPlayerPoints, dCard1)
-        elif totalPlayerPoints > 21 or totalDealerPoints > 21:
+            totalPlayerPoints
+        if totalPlayerPoints > 21 or totalDealerPoints > 21:
             checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPlayerPoints, dCard1)
     
         keepGoing = input("\nPlay Again? (y/n): ")
