@@ -2,39 +2,43 @@ import random
 import db as db
 
 def getPlayerBet(playerMoney):
-    print("Money: ", playerMoney[0])
+    db.readPlayerMoney()
+    playerMoney = float(playerMoney)
+    print("Money: ", db.readPlayerMoney())
     print()
     
     while True:
         try:
             betAmount = float(input("Bet Amount: "))
-            if (betAmount >= 5 and betAmount <= 1000) and betAmount <= playerMoney[0]:
-                playerMoney = playerMoney[0] - betAmount
+            if (betAmount >= 5 and betAmount <= 1000) and betAmount <= float(db.readPlayerMoney()):
+                playerMoney = playerMoney - betAmount
                 db.writePlayerMoney(playerMoney)
                 print()
                 return betAmount
-            elif betAmount < 5 or betAmount > 1000 or betAmount > playerMoney[0]:
-                print("Invalid bet amount. Bets must be between 5 and 1000, and can't be less than your current balance, $" + str(playerMoney[0]) + ".\n")
+            elif betAmount < 5 or betAmount > 1000 or betAmount > playerMoney:
+                print("Invalid bet amount. Bets must be between 5 and 1000, and can't be less than your current balance, $" + str(playerMoney) + ".\n")
                 continue
         except ValueError:
             print("Please enter a valid number.\n")
             continue
+        return playerMoney
 
 def playerWins(playerMoney, betAmount):
     winnings = betAmount * 1.5
-    playerMoney = playerMoney[0] + winnings
+    playerMoney = playerMoney + winnings
     db.writePlayerMoney(playerMoney)
-    print("MONEY :", playerMoney)
+    print("MONEY :", db.readPlayerMoney())
     return playerMoney
 
 def playerLoss(playerMoney, betAmount):
-    playerMoney = playerMoney[0] - betAmount
+    playerMoney = playerMoney - betAmount
     db.writePlayerMoney(playerMoney)
-    print("MONEY: ", playerMoney)
+    print("MONEY: ", db.readPlayerMoney())
     if playerMoney < 5:
-        buyMore = input("Balance less than minimum bet, would you like to top up to $100?")
+        buyMore = input("Balance less than minimum bet, would you like to top up to $100? (y/n): ")
         if buyMore.lower() == "y":
-            playerMoney[0] = 100
+            playerMoney = 100
+
     
 def cardDeck():
     suits = ["Spades", "Clubs", "Hearts", "Diamonds"]
@@ -106,48 +110,48 @@ def playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1
         values = card[2]
         totalPlayerPoints = totalPlayerPoints + values
         if totalPlayerPoints == 21:
-            checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPlayerPoints, dCard1)
+            playerWins(playerMoney, betAmount)
         elif totalPlayerPoints > 21:
                     for card in playerCards:
                         if card[0] == "Ace":
                             card[2] == 1
-                            playerPoints(playerCards, cards, dCard1)
+                            playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
                         else:
-                            checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPlayerPoints, dCard1)
+                            playerLoss(playerMoney, betAmount)
     return totalPlayerPoints
     
-def dealerPoints(dealerCards):
+def dealerPoints(dealerCards, playerMoney, betAmount):
     totalDealerPoints = 0
     for card in dealerCards:
         values = int(card[2])
         totalDealerPoints += values
-        # if totalDealerPoints == 21:
-        #     print("DEALER POINTS: ", totalDealerPoints, "\nBLACKJACK !!!")
-        #     exit()
-        # elif totalDealerPoints > 21:
-        #             for card in dealerCards:
-        #                 if card[0] == "Ace":
-        #                     card[2] == 1
-        #                     dealerPoints(dealerCards)
+        if totalDealerPoints == 21:
+            playerLoss(playerMoney, betAmount)
+            exit()
+        elif totalDealerPoints > 21:
+                    for card in dealerCards:
+                        if card[0] == "Ace":
+                            card[2] == 1
+                            dealerPoints(dealerCards, playerMoney, betAmount)
     return totalDealerPoints
 
 def dealerTurnHit(cards, dealerCards, playerCards, playerMoney, betAmount, totalPlayerPoints, dCard1):
     print("\nDEALER's CARDS: ")
     dealerHand(dealerCards)
-    print("DEALER POINTS: ", dealerPoints(dealerCards), "\n")
+    print("DEALER POINTS: ", dealerPoints(dealerCards, playerMoney, betAmount), "\n")
 
-    while dealerPoints(dealerCards) < 17:
+    while dealerPoints(dealerCards, playerMoney, betAmount) < 17:
         print("\nDealer hits...\n")
         dCard3 = getDealerCards(cards, dealerCards)
         print(dCard3[1], " of ", dCard3[0])
-        print("\nDEALER POINTS: ", dealerPoints(dealerCards))
+        print("\nDEALER POINTS: ", dealerPoints(dealerCards, playerMoney, betAmount))
     
     checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPlayerPoints, dCard1)
 
 def checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPlayerPoints, dCard1):
 
-    # playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards)
-    totalDealerPoints = dealerPoints(dealerCards)
+    totalPlayerPoints = playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
+    totalDealerPoints = dealerPoints(dealerCards, playerMoney, betAmount)
     #while True:
     if totalPlayerPoints > 21:
         for card in playerCards:
@@ -186,6 +190,15 @@ def checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPl
 
     #Round payout to max 2 decimal places
 
+def hitStand(cards, dealerCards, playerCards, playerMoney, betAmount, totalPlayerPoints, dCard1):
+    playerChoice = input("\nHit or Stand? >> ")
+    if playerChoice.lower() == "hit":
+        playerTurnHit(cards, playerCards, dealerCards, playerMoney, betAmount, dCard1)
+    elif playerChoice.lower() == "stand":
+        dealerTurnHit(cards, dealerCards, playerCards, playerMoney, betAmount, totalPlayerPoints, dCard1)
+    else:
+        print("Please enter a valid command.")
+
 def main():
     
     playerMoney = db.startingPlayerMoney()
@@ -196,6 +209,7 @@ def main():
     
     keepGoing = "y"
     while keepGoing.lower() == "y":
+        db.writePlayerMoney(playerMoney)
         betAmount = getPlayerBet(playerMoney)
         
         cards = cardDeck()
@@ -213,20 +227,15 @@ def main():
         DealCards(dCard1, playerCards, dealerCards,playerMoney, betAmount, cards)
 
         totalPlayerPoints = playerPoints(playerCards, dealerCards, playerMoney, betAmount, cards, dCard1)
-        totalDealerPoints = dealerPoints(dealerCards)
+        totalDealerPoints = dealerPoints(dealerCards, playerMoney, betAmount)
 
         
         if totalPlayerPoints < 21 and totalDealerPoints < 21:
-            playerChoice = input("\nHit or Stand? >> ")
-            if playerChoice.lower() == "hit":
-                playerTurnHit(cards, playerCards, dealerCards, playerMoney, betAmount, dCard1)
-            elif playerChoice.lower() == "stand":
-                dealerTurnHit(cards, dealerCards, playerCards, playerMoney, betAmount, totalPlayerPoints, dCard1)
-                checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPlayerPoints, dCard1)
-            else:
-                print("Please enter a valid command.")
+            hitStand(cards, dealerCards, playerCards, playerMoney, betAmount, totalPlayerPoints, dCard1)
+        elif totalPlayerPoints > 21 or totalDealerPoints > 21:
+            checkWinner(playerCards, dealerCards, playerMoney, betAmount, cards, totalPlayerPoints, dCard1)
     
-    keepGoing = input("\nPlay Again? (y/n): ")
+        keepGoing = input("\nPlay Again? (y/n): ")
     
     print("\nThanks for playing!")
 
